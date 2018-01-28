@@ -1,0 +1,16 @@
+from flask import Flask
+from flask import request
+ 
+app = Flask(__name__)
+client = MongoClient(port=27017)
+db=client.mydatabase
+
+
+@app.route('/values', methods=['POST'])
+def values():
+    content = request.json()
+    result=db.temperature.insert_one(content)
+    return "Data saved!"
+
+ 
+app.run(host='0.0.0.0',debug=True)

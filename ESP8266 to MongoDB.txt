@@ -1,0 +1,66 @@
+#include <ESP8266HTTPClient.h>
+#include <ESP8266WiFi.h>
+#include <ArduinoJson.h>
+
+
+
+void setup() {
+ 
+  Serial.begin(115200);                            //Serial connection
+  WiFi.begin("DataSoft_WiFi", "support123");   //WiFi connection
+ 
+  while (WiFi.status() != WL_CONNECTED) {  //Wait for the WiFI connection completion
+ 
+    delay(500);
+    Serial.println("Waiting for connection");
+ 
+  }
+ 
+}
+ 
+void loop() {
+ 
+  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
+ 
+    StaticJsonBuffer<300> JSONbuffer;   //Declaring static JSON buffer
+    JsonObject& JSONencoder = JSONbuffer.createObject(); 
+    int analogValue = analogRead(A0);
+    float millivolts = (analogValue/1024.0) * 3300;
+    float temperature = millivolts/10;
+    JSONencoder["sensorType"] = "Temperature";
+ 
+    JsonArray& values = JSONencoder.createNestedArray("values"); //JSON array
+    values.add(20); 
+    values.add(21);
+    values.add(23); 
+
+    JsonArray& timestamps = JSONencoder.createNestedArray("timestamps"); //JSON array
+    timestamps.add(temperature);
+    
+ 
+    char JSONmessageBuffer[300];
+    JSONencoder.prettyPrintTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
+    Serial.println(JSONmessageBuffer);
+ 
+    HTTPClient http;    
+ 
+    http.begin("http://192.168.10.102:5000/value");      
+    http.addHeader("Content-Type", "application/json"); 
+ 
+    int httpCode = http.POST(JSONmessageBuffer);   //Send the request
+    String payload = http.getString();                                        //Get the response payload
+ 
+    Serial.println(httpCode);   //Print HTTP return code
+    Serial.println(payload);    //Print request response payload
+ 
+    http.end();  //Close connection
+ 
+  } else {
+ 
+    Serial.println("Error in WiFi connection");
+ 
+  }
+ 
+  delay(30000);  //Send a request every 30 seconds
+ 
+}

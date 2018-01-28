@@ -1,0 +1,51 @@
+/* Blynk EMAIL and NOTIFICATION
+ * ESP8266 example
+ * www.geekstips.com
+*/
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <SimpleTimer.h>
+
+
+// You should get Auth Token in the Blynk App.
+// Go to the Project Settings (nut icon).
+char auth[] = "5910db5eb5f543ecb7c363944ac314c3";
+
+// Your WiFi credentials.
+// Set password to "" for open networks.
+char ssid[] = "Coconut";
+char pass[] = "BrickPhones555";
+
+
+SimpleTimer timer;
+
+void sendSensor(){
+  /*float h = dht.readHumidity();
+  float t = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit*/
+
+  float t = 30.00;
+
+  Serial.println(t);
+  /*Blynk.virtualWrite(V5, h);
+  Blynk.virtualWrite(V6, t);*/
+
+  // SETUP the ALARM Trigger and Send EMAIL 
+  // and PUSH Notification
+
+  if(t > 28){
+    Blynk.email("rashed.bishal@gmail.com", "ESP8266 Alert", "Temperature over 28C!");
+    Blynk.notify("ESP8266 Alert - Rashed Bishal");
+  }
+}
+
+void setup(){
+  Serial.begin(115200);
+  Blynk.begin(auth, ssid, pass);
+  timer.setInterval(16000L, sendSensor);
+}
+
+void loop(){
+  Blynk.run();
+  timer.run();
+}
