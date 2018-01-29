@@ -29,7 +29,7 @@ void loop() {
           Serial.print("bit ");      
           Serial.print("Protocol: ");     
           Serial.println( mySwitch.getReceivedProtocol() );    
-          delay(2000);
+          mySwitch.resetAvailable();
           }
   }
 }
