@@ -7,12 +7,12 @@ RCSwitch mySwitch = RCSwitch();
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-char auth[] = "71fdaebac87b468c810817b32642f7e3";
+char auth[] = "c0ac74fb231c4e2abc4b064d860081a7";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "Coconut";
-char pass[] = "BrickPhones555";
+char ssid[] = "DataSoft_WiFi";
+char pass[] = "support123";
 
 
 SimpleTimer timer;
@@ -65,6 +65,7 @@ void setup()
 {
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
+  pinMode(5,OUTPUT);
   mySwitch.enableTransmit(4);   //UART setup, baudrate = 115200bps
   Serial.print("Calibrating...\n");                
   Ro = MQCalibration(MQ_PIN);                       //Calibrating the sensor. Please make sure the sensor is in clean air                                                   //when you perform the calibration                    
@@ -187,14 +188,25 @@ void sendSensor(){
   /*float h = dht.readHumidity();
   float t = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit*/
 
- if(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0)
+ if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 0)
   {
     mySwitch.send(200, 24);
   }
-  else if(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0)
+  else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0) && digitalRead(5) == 0)
   {
     mySwitch.send(400, 24);
     Blynk.notify("Warning! Gas level has been increased!");
+    Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
+  }
+  else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 1)
+  {
+    mySwitch.send(400, 24);
+  }
+  else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0) && digitalRead(5) == 1)
+  {
+    mySwitch.send(400, 24);
+    Blynk.notify("Warning! Gas level has been increased!");
+    Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
   }
    Serial.print("LPG:"); 
    Serial.print(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) );
