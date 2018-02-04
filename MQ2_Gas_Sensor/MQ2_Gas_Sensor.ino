@@ -1,7 +1,12 @@
 #include <RCSwitch.h>
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
+#include <ESP8266HTTPClient.h>
 #include <SimpleTimer.h>
+#include <time.h>
+#include <ArduinoJson.h>
+#include <stdlib.h>
+#include <string.h>
 
 RCSwitch mySwitch = RCSwitch();
 
@@ -11,11 +16,15 @@ char auth[] = "c0ac74fb231c4e2abc4b064d860081a7";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "DataSoft_WiFi";
-char pass[] = "support123";
-
+char ssid[] = "Coconut";
+char pass[] = "BrickPhones555";
+static String timeFrame = "America";
+bool removeODD = false;
+int timezone = 6 * 3600;
+int dst = 0;
 
 SimpleTimer timer;
+SimpleTimer getTime;
 /*******************Demo for MQ-2 Gas Sensor Module V1.0*****************************
 Support:  Tiequan Shao: support[at]sandboxelectronics.com
  
@@ -65,7 +74,22 @@ void setup()
 {
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
+  WiFi.begin(ssid,pass);
+  while( WiFi.status() != WL_CONNECTED ){
+      delay(500);
+      Serial.print(".");        
+  }
+
+  configTime(timezone, dst, "pool.ntp.org","time.nist.gov");
+  Serial.println("\nWaiting for Internet time");
+
+  while(!time(nullptr)){
+     Serial.print("*");
+     delay(1000);
+  }
+  Serial.println("\nTime response....OK");   
   pinMode(5,OUTPUT);
+  pinMode(14,OUTPUT);
   mySwitch.enableTransmit(4);   //UART setup, baudrate = 115200bps
   Serial.print("Calibrating...\n");                
   Ro = MQCalibration(MQ_PIN);                       //Calibrating the sensor. Please make sure the sensor is in clean air                                                   //when you perform the calibration                    
@@ -74,21 +98,15 @@ void setup()
   Serial.print(Ro);
   Serial.print("kohm");
   Serial.print("\n");
-  timer.setInterval(4000L, sendSensor);
+  timer.setInterval(3000L, sendSensor);
+  getTime.setInterval(0L, myTime);
 }
  
 void loop()
 {
-  /*if(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0)
-  {
-    mySwitch.send(200, 24);
-  }
-  else if(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0)
-  {
-    mySwitch.send(400, 24);
-  }*/
   Blynk.run();
   timer.run();
+  getTime.run();
 }
  
 /****************** MQResistanceCalculation ****************************************
@@ -185,30 +203,45 @@ int  MQGetPercentage(float rs_ro_ratio, float *pcurve)
 }
 
 void sendSensor(){
-  /*float h = dht.readHumidity();
-  float t = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit*/
+  
+  char message[500];
+  DynamicJsonBuffer jBuffer;
+  JsonObject& frame = jBuffer.createObject();
 
  if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 0)
   {
+    digitalWrite(14,LOW);
     mySwitch.send(200, 24);
   }
   else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0) && digitalRead(5) == 0)
   {
+    digitalWrite(14,HIGH);
     mySwitch.send(400, 24);
-    Blynk.notify("Warning! Gas level has been increased!");
+    //Blynk.notify("Warning! Gas level has been increased!");
+    Blynk.notify(timeFrame);
     Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
   }
   else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 1)
   {
+    digitalWrite(14,HIGH);
     mySwitch.send(400, 24);
   }
   else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0) && digitalRead(5) == 1)
   {
+    digitalWrite(14,HIGH);
     mySwitch.send(400, 24);
-    Blynk.notify("Warning! Gas level has been increased!");
+    //Blynk.notify("Warning! Gas level has been increased!");
+    Blynk.notify(timeFrame);
     Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
   }
-   Serial.print("LPG:"); 
+    frame["LPG"]= MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG);
+    frame["CO"]= MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO);
+    frame["SMOKE"]=MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE);
+    frame["time"]=timeFrame;
+    frame.prettyPrintTo(message,sizeof(message));
+    Serial.println(message);
+    
+   /*Serial.print("LPG:"); 
    Serial.print(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) );
    Serial.print( "ppm" );
    Serial.print("    ");   
@@ -219,5 +252,46 @@ void sendSensor(){
    Serial.print("SMOKE:"); 
    Serial.print(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) );
    Serial.print( "ppm" );
-   Serial.print("\n");
+   Serial.print( "   " );
+   Serial.print("TIME:"); 
+   Serial.print(timeFrame);
+   Serial.print("\n");*/
+
+   HTTPClient http;    
+ 
+    http.begin("http://192.168.0.3:5000/value");      
+    http.addHeader("Content-Type", "application/json"); 
+ 
+    int httpCode = http.POST(message);   //Send the request
+    String payload = http.getString();                                        //Get the response payload
+ 
+    Serial.println(httpCode);   //Print HTTP return code
+    Serial.println(payload);    //Print request response payload
+ 
+    http.end();  //Close connection
 }
+
+void myTime()
+{
+  time_t now = time(nullptr);
+  struct tm* p_tm = localtime(&now);
+  int date = p_tm->tm_mday;
+      int month = p_tm->tm_mon + 1;
+      int year = p_tm->tm_year + 1900;
+      int hour = p_tm->tm_hour;
+      int minute = p_tm->tm_min;
+      int second = p_tm->tm_sec;
+    
+      String dd = (String)date;
+      String mm = (String)month;
+      String yyyy = (String)year;
+      String hh = (String)hour;
+      String mn = (String)minute;
+      String ss = (String)second;
+    
+      
+      timeFrame=dd+"/"+mm+"/"+yyyy+"  "+hh+":"+mn+":"+ss;
+}
+
+
+
