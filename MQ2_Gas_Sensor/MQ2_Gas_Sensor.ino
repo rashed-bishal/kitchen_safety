@@ -16,8 +16,8 @@ char auth[] = "c0ac74fb231c4e2abc4b064d860081a7";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "Coconut";
-char pass[] = "BrickPhones555";
+char ssid[] = "DataSoft_WiFi";
+char pass[] = "support123";
 static String timeFrame = "America";
 bool removeODD = false;
 int timezone = 6 * 3600;
@@ -217,8 +217,8 @@ void sendSensor(){
   {
     digitalWrite(14,HIGH);
     mySwitch.send(400, 24);
-    //Blynk.notify("Warning! Gas level has been increased!");
-    Blynk.notify(timeFrame);
+    Blynk.notify("Warning! Gas level has been increased!");
+    //Blynk.notify(timeFrame);
     Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
   }
   else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 1)
@@ -230,8 +230,8 @@ void sendSensor(){
   {
     digitalWrite(14,HIGH);
     mySwitch.send(400, 24);
-    //Blynk.notify("Warning! Gas level has been increased!");
-    Blynk.notify(timeFrame);
+    Blynk.notify("Warning! Gas level has been increased!");
+    //Blynk.notify(timeFrame);
     Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
   }
     frame["LPG"]= MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG);
@@ -259,7 +259,7 @@ void sendSensor(){
 
    HTTPClient http;    
  
-    http.begin("http://192.168.0.3:5000/value");      
+    http.begin("http://nameless-dawn-39022.herokuapp.com/value");      
     http.addHeader("Content-Type", "application/json"); 
  
     int httpCode = http.POST(message);   //Send the request

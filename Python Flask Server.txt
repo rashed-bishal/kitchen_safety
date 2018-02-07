@@ -1,12 +1,13 @@
 from flask import Flask
 from flask import request
+from pymongo import MongoClient
  
 app = Flask(__name__)
 client = MongoClient(port=27017)
 db=client.mydatabase
 
 
-@app.route('/values', methods=['POST'])
+@app.route('/values', methods=['GET','POST'])
 def values():
     content = request.json()
     result=db.temperature.insert_one(content)
