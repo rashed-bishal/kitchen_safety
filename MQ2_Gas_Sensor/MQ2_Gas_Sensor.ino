@@ -9,13 +9,7 @@
 #include <string.h>
 
 RCSwitch mySwitch = RCSwitch();
-
-// You should get Auth Token in the Blynk App.
-// Go to the Project Settings (nut icon).
 char auth[] = "c0ac74fb231c4e2abc4b064d860081a7";
-
-// Your WiFi credentials.
-// Set password to "" for open networks.
 char ssid[] = "DataSoft_WiFi";
 char pass[] = "support123";
 static String timeFrame = "America";
@@ -25,57 +19,29 @@ int dst = 0;
 
 SimpleTimer timer;
 SimpleTimer getTime;
-/*******************Demo for MQ-2 Gas Sensor Module V1.0*****************************
-Support:  Tiequan Shao: support[at]sandboxelectronics.com
- 
-Lisence: Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA 3.0)
- 
-Note:    This piece of source code is supposed to be used as a demostration ONLY. More
-         sophisticated calibration is required for industrial field application. 
- 
-                                                    Sandbox Electronics    2011-04-25
-************************************************************************************/
- 
-/************************Hardware Related Macros************************************/
-#define         MQ_PIN                       (A0)     //define which analog input channel you are going to use
-#define         RL_VALUE                     (4.9)     //define the load resistance on the board, in kilo ohms
-#define         RO_CLEAN_AIR_FACTOR          (9.83)  //RO_CLEAR_AIR_FACTOR=(Sensor resistance in clean air)/RO,
-                                                     //which is derived from the chart in datasheet
- 
-/***********************Software Related Macros************************************/
-#define         CALIBARAION_SAMPLE_TIMES     (50)    //define how many samples you are going to take in the calibration phase
-#define         CALIBRATION_SAMPLE_INTERVAL  (500)   //define the time interal(in milisecond) between each samples in the
-                                                     //cablibration phase
-#define         READ_SAMPLE_INTERVAL         (50)    //define how many samples you are going to take in normal operation
-#define         READ_SAMPLE_TIMES            (5)     //define the time interal(in milisecond) between each samples in 
-                                                     //normal operation
- 
-/**********************Application Related Macros**********************************/
+
+#define         MQ_PIN                       (A0) 
+#define         RL_VALUE                     (5)     
+#define         RO_CLEAN_AIR_FACTOR          (9.83)
+#define         CALIBARAION_SAMPLE_TIMES     (50) 
+#define         CALIBRATION_SAMPLE_INTERVAL  (500)
+#define         READ_SAMPLE_INTERVAL         (50)
+#define         READ_SAMPLE_TIMES            (5)
 #define         GAS_LPG                      (0)
 #define         GAS_CO                       (1)
 #define         GAS_SMOKE                    (2) 
- 
-/*****************************Globals***********************************************/
-float           LPGCurve[3]  =  {2.3,0.21,-0.47};   //two points are taken from the curve. 
-                                                    //with these two points, a line is formed which is "approximately equivalent"
-                                                    //to the original curve. 
-                                                    //data format:{ x, y, slope}; point1: (lg200, 0.21), point2: (lg10000, -0.59) 
-float           COCurve[3]  =  {2.3,0.72,-0.34};    //two points are taken from the curve. 
-                                                    //with these two points, a line is formed which is "approximately equivalent" 
-                                                    //to the original curve.
-                                                    //data format:{ x, y, slope}; point1: (lg200, 0.72), point2: (lg10000,  0.15) 
-float           SmokeCurve[3] ={2.3,0.53,-0.44};    //two points are taken from the curve. 
-                                                    //with these two points, a line is formed which is "approximately equivalent" 
-                                                    //to the original curve.
-                                                    //data format:{ x, y, slope}; point1: (lg200, 0.53), point2: (lg10000,  -0.22)                                                     
-float           Ro           =  10;                 //Ro is initialized to 10 kilo ohms
+float           LPGCurve[3]  =  {2.3,0.21,-0.47};
+float           COCurve[3]  =  {2.3,0.72,-0.34};
+float           SmokeCurve[3] ={2.3,0.53,-0.44};                                         
+float           Ro           =  10;
  
 void setup()
 {
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
   WiFi.begin(ssid,pass);
-  while( WiFi.status() != WL_CONNECTED ){
+  while( WiFi.status() != WL_CONNECTED )
+  {
       delay(500);
       Serial.print(".");        
   }
@@ -83,16 +49,17 @@ void setup()
   configTime(timezone, dst, "pool.ntp.org","time.nist.gov");
   Serial.println("\nWaiting for Internet time");
 
-  while(!time(nullptr)){
+  while(!time(nullptr))
+  {
      Serial.print("*");
      delay(1000);
   }
   Serial.println("\nTime response....OK");   
   pinMode(5,OUTPUT);
   pinMode(14,OUTPUT);
-  mySwitch.enableTransmit(4);   //UART setup, baudrate = 115200bps
+  mySwitch.enableTransmit(4);
   Serial.print("Calibrating...\n");                
-  Ro = MQCalibration(MQ_PIN);                       //Calibrating the sensor. Please make sure the sensor is in clean air                                                   //when you perform the calibration                    
+  Ro = MQCalibration(MQ_PIN);
   Serial.print("Calibration is done...\n"); 
   Serial.print("Ro=");
   Serial.print(Ro);
@@ -109,72 +76,40 @@ void loop()
   getTime.run();
 }
  
-/****************** MQResistanceCalculation ****************************************
-Input:   raw_adc - raw value read from adc, which represents the voltage
-Output:  the calculated sensor resistance
-Remarks: The sensor and the load resistor forms a voltage divider. Given the voltage
-         across the load resistor and its resistance, the resistance of the sensor
-         could be derived.
-************************************************************************************/ 
 float MQResistanceCalculation(int raw_adc)
 {
   return ( ((float)RL_VALUE*(1023-raw_adc)/raw_adc));
 }
  
-/***************************** MQCalibration ****************************************
-Input:   mq_pin - analog channel
-Output:  Ro of the sensor
-Remarks: This function assumes that the sensor is in clean air. It use  
-         MQResistanceCalculation to calculates the sensor resistance in clean air 
-         and then divides it with RO_CLEAN_AIR_FACTOR. RO_CLEAN_AIR_FACTOR is about 
-         10, which differs slightly between different sensors.
-************************************************************************************/ 
 float MQCalibration(int mq_pin)
 {
   int i;
   float val=0;
  
-  for (i=0;i<CALIBARAION_SAMPLE_TIMES;i++) {            //take multiple samples
+  for (i=0;i<CALIBARAION_SAMPLE_TIMES;i++)
+  {            
     val += MQResistanceCalculation(analogRead(A0));
     delay(CALIBRATION_SAMPLE_INTERVAL);
   }
-  val = val/CALIBARAION_SAMPLE_TIMES;                   //calculate the average value
- 
-  val = val/RO_CLEAN_AIR_FACTOR;                        //divided by RO_CLEAN_AIR_FACTOR yields the Ro 
-                                                        //according to the chart in the datasheet 
- 
+  val = val/CALIBARAION_SAMPLE_TIMES;
+  val = val/RO_CLEAN_AIR_FACTOR;                         
   return val; 
 }
-/*****************************  MQRead *********************************************
-Input:   mq_pin - analog channel
-Output:  Rs of the sensor
-Remarks: This function use MQResistanceCalculation to caculate the sensor resistenc (Rs).
-         The Rs changes as the sensor is in the different consentration of the target
-         gas. The sample times and the time interval between samples could be configured
-         by changing the definition of the macros.
-************************************************************************************/ 
+ 
 float MQRead(int mq_pin)
 {
   int i;
   float rs=0;
  
-  for (i=0;i<READ_SAMPLE_TIMES;i++) {
+  for (i=0;i<READ_SAMPLE_TIMES;i++)
+  {
     rs += MQResistanceCalculation(analogRead(A0));
     delay(READ_SAMPLE_INTERVAL);
   }
- 
   rs = rs/READ_SAMPLE_TIMES;
- 
   return rs;  
 }
- 
-/*****************************  MQGetGasPercentage **********************************
-Input:   rs_ro_ratio - Rs divided by Ro
-         gas_id      - target gas type
-Output:  ppm of the target gas
-Remarks: This function passes different curves to the MQGetPercentage function which 
-         calculates the ppm (parts per million) of the target gas.
-************************************************************************************/ 
+
 int MQGetGasPercentage(float rs_ro_ratio, int gas_id)
 {
   if ( gas_id == GAS_LPG ) {
@@ -187,88 +122,65 @@ int MQGetGasPercentage(float rs_ro_ratio, int gas_id)
  
   return 0;
 }
- 
-/*****************************  MQGetPercentage **********************************
-Input:   rs_ro_ratio - Rs divided by Ro
-         pcurve      - pointer to the curve of the target gas
-Output:  ppm of the target gas
-Remarks: By using the slope and a point of the line. The x(logarithmic value of ppm) 
-         of the line could be derived if y(rs_ro_ratio) is provided. As it is a 
-         logarithmic coordinate, power of 10 is used to convert the result to non-logarithmic 
-         value.
-************************************************************************************/ 
+
 int  MQGetPercentage(float rs_ro_ratio, float *pcurve)
 {
   return (pow(10,( ((log(rs_ro_ratio)-pcurve[1])/pcurve[2]) + pcurve[0])));
 }
 
-void sendSensor(){
+void sendSensor()
+{
   
   char message[500];
   DynamicJsonBuffer jBuffer;
   JsonObject& frame = jBuffer.createObject();
 
- if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 0)
-  {
-    digitalWrite(14,LOW);
-    mySwitch.send(200, 24);
-  }
-  else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0) && digitalRead(5) == 0)
-  {
-    digitalWrite(14,HIGH);
-    mySwitch.send(400, 24);
-    Blynk.notify("Warning! Gas level has been increased!");
-    //Blynk.notify(timeFrame);
-    Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
-  }
-  else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) == 0 && MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) ==0) && digitalRead(5) == 1)
-  {
-    digitalWrite(14,HIGH);
-    mySwitch.send(400, 24);
-  }
-  else if((MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) > 0 || MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) > 0) && digitalRead(5) == 1)
-  {
-    digitalWrite(14,HIGH);
-    mySwitch.send(400, 24);
-    Blynk.notify("Warning! Gas level has been increased!");
-    //Blynk.notify(timeFrame);
-    Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
-  }
-    frame["LPG"]= MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG);
-    frame["CO"]= MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO);
-    frame["SMOKE"]=MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE);
-    frame["time"]=timeFrame;
+  int value_LPG = MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG);
+  int value_CO = MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO);
+  int value_SMOKE = MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE);
+
+   if((value_LPG <=1000 && value_CO <= 8 && value_SMOKE <=1000) && digitalRead(5) == 0)
+    {
+      digitalWrite(14,LOW);
+      mySwitch.send(200, 24);
+    }
+    else if((value_LPG > 1000 || value_CO > 9 || value_SMOKE > 1000) && digitalRead(5) == 0)
+    {
+      digitalWrite(14,HIGH);
+      mySwitch.send(400, 24);
+      Blynk.notify("Warning! Gas level has been increased!");
+      Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
+    }
+    else if((value_LPG <= 1000 && value_CO <= 8 && value_SMOKE <= 1000) && digitalRead(5) == 1)
+    {
+      digitalWrite(14,LOW);
+      mySwitch.send(400, 24);
+    }
+    else if((value_LPG > 1000 || value_CO > 9 || value_SMOKE > 1000) && digitalRead(5) == 1)
+    {
+      digitalWrite(14,HIGH);
+      mySwitch.send(400, 24);
+      Blynk.notify("Warning! Gas level has been increased!");
+      Blynk.email("rashed.bishal@gmail.com", "Kitchen Safety Alert", "Gas level has been increased!");
+    }
+    
+    frame["LPG"] = value_LPG;
+    frame["CO"] = value_CO;
+    frame["SMOKE"] = value_SMOKE;
+    frame["time"] = timeFrame;
     frame.prettyPrintTo(message,sizeof(message));
     Serial.println(message);
-    
-   /*Serial.print("LPG:"); 
-   Serial.print(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_LPG) );
-   Serial.print( "ppm" );
-   Serial.print("    ");   
-   Serial.print("CO:"); 
-   Serial.print(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_CO) );
-   Serial.print( "ppm" );
-   Serial.print("    ");   
-   Serial.print("SMOKE:"); 
-   Serial.print(MQGetGasPercentage(MQRead(MQ_PIN)/Ro,GAS_SMOKE) );
-   Serial.print( "ppm" );
-   Serial.print( "   " );
-   Serial.print("TIME:"); 
-   Serial.print(timeFrame);
-   Serial.print("\n");*/
 
-   HTTPClient http;    
- 
+    HTTPClient http;    
     http.begin("http://nameless-dawn-39022.herokuapp.com/value");      
     http.addHeader("Content-Type", "application/json"); 
+
+    int httpCode = http.POST(message);  
+    String payload = http.getString();
+    Serial.println(httpCode);
+    Serial.println(payload);
  
-    int httpCode = http.POST(message);   //Send the request
-    String payload = http.getString();                                        //Get the response payload
- 
-    Serial.println(httpCode);   //Print HTTP return code
-    Serial.println(payload);    //Print request response payload
- 
-    http.end();  //Close connection
+    http.end();
 }
 
 void myTime()
@@ -276,21 +188,20 @@ void myTime()
   time_t now = time(nullptr);
   struct tm* p_tm = localtime(&now);
   int date = p_tm->tm_mday;
-      int month = p_tm->tm_mon + 1;
-      int year = p_tm->tm_year + 1900;
-      int hour = p_tm->tm_hour;
-      int minute = p_tm->tm_min;
-      int second = p_tm->tm_sec;
-    
-      String dd = (String)date;
-      String mm = (String)month;
-      String yyyy = (String)year;
-      String hh = (String)hour;
-      String mn = (String)minute;
-      String ss = (String)second;
-    
-      
-      timeFrame=dd+"/"+mm+"/"+yyyy+"  "+hh+":"+mn+":"+ss;
+  int month = p_tm->tm_mon + 1;
+  int year = p_tm->tm_year + 1900;
+  int hour = p_tm->tm_hour;
+  int minute = p_tm->tm_min;
+  int second = p_tm->tm_sec;
+
+  String dd = (String)date;
+  String mm = (String)month;
+  String yyyy = (String)year;
+  String hh = (String)hour;
+  String mn = (String)minute;
+  String ss = (String)second;
+
+  timeFrame=yyyy+"-"+mm+"-"+dd+"  "+hh+":"+mn+":"+ss;
 }
 
 
