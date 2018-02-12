@@ -30,9 +30,9 @@ SimpleTimer getTime;
 #define         GAS_LPG                      (0)
 #define         GAS_CO                       (1)
 #define         GAS_SMOKE                    (2) 
-float           LPGCurve[3]  =  {2.3,0.21,-0.47};
-float           COCurve[3]  =  {2.3,0.72,-0.34};
-float           SmokeCurve[3] ={2.3,0.53,-0.44};                                         
+float           LPGCurve[6]  =  {2.3,0.21,-0.47};
+float           COCurve[6]  =  {2.3,0.72,-0.34};
+float           SmokeCurve[6] ={2.3,0.53,-0.44};                                         
 float           Ro           =  10;
  
 void setup()
@@ -144,7 +144,7 @@ void sendSensor()
       digitalWrite(14,LOW);
       mySwitch.send(200, 24);
     }
-    else if((value_LPG > 1000 || value_CO > 9 || value_SMOKE > 1000) && digitalRead(5) == 0)
+    else if((value_LPG > 1000 || value_CO > 9 || value_SMOKE > 1000) && digitalRead(5) == 0) 
     {
       digitalWrite(14,HIGH);
       mySwitch.send(400, 24);
